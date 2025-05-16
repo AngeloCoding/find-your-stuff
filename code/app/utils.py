@@ -33,6 +33,8 @@ def execute_sql(query: str, db_path: str = "primaerdaten.db") -> List[Dict[str, 
         cur = conn.execute(raw)
         rows = cur.fetchall()
 
+    rows = rows[:20]  # Limit to 20 rows for performance
+
     # 5) Convert to list of dicts
     return [dict(r) for r in rows]
 
