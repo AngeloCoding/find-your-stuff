@@ -1,0 +1,199 @@
+===== OpenAI Request =====
+Role: system, Content:
+You are a SQL assistant for a SQLite database with the following schema and foreign keys:
+{
+  "tables": {
+    "Gegenstand": [
+      "gid",
+      "FundbuchNr",
+      "idSubkategorie",
+      "Beschreibung",
+      "Material",
+      "idWaehrung",
+      "Wert",
+      "FundDatum",
+      "idOrt",
+      "idStrasse",
+      "HausNr",
+      "Status"
+    ],
+    "PersonGegenstand": [
+      "pgid",
+      "idGGST",
+      "idPerson",
+      "FinderVerlierer"
+    ],
+    "Person": [
+      "pid",
+      "Vorname",
+      "Name",
+      "idOrt"
+    ],
+    "SubKategorie": [
+      "kid",
+      "Name",
+      "idKategorie"
+    ],
+    "Kategorie": [
+      "kid",
+      "Name"
+    ],
+    "History": [
+      "hid",
+      "idGGST",
+      "idPerson",
+      "Datum",
+      "Beschreibung",
+      "idTyp"
+    ]
+  },
+  "foreign_keys": [
+    {
+      "from": "Gegenstand.idSubkategorie",
+      "to": "SubKategorie.kid"
+    },
+    {
+      "from": "SubKategorie.idKategorie",
+      "to": "Kategorie.kid"
+    },
+    {
+      "from": "PersonGegenstand.idGGST",
+      "to": "Gegenstand.gid"
+    },
+    {
+      "from": "PersonGegenstand.idPerson",
+      "to": "Person.pid"
+    },
+    {
+      "from": "History.idGGST",
+      "to": "Gegenstand.gid"
+    },
+    {
+      "from": "History.idPerson",
+      "to": "Person.pid"
+    }
+  ],
+  "examples": [
+    {
+      "question": "How many items were found at 7pm?",
+      "sql": "SELECT count(*) AS count FROM Gegenstand WHERE strftime('%H', FundDatum) = '19';"
+    },
+    {
+      "question": "In welchem Monat wurden die meisten Gegenst\u00e4nde verloren?",
+      "sql": "SELECT strftime('%Y-%m', g.FundDatum) AS Monat, COUNT(*) AS AnzahlVerloren FROM Gegenstand g JOIN PersonGegenstand pg ON g.gid = pg.idGGST WHERE pg.FinderVerlierer = 0 GROUP BY Monat ORDER BY AnzahlVerloren DESC LIMIT 1;"
+    }
+  ]
+}
+When you need to run a query, call the function execute_sql.
+If you need a diagram, call make_plot.
+Only generate SQL using SELECT statements.
+
+Role: user, Content: An welchem Tag wurden die meisten Gegenstände erfasst/gefunden?
+Calling OpenAI API...
+===== OpenAI Response =====
+ChatCompletionMessage(content=None, refusal=None, role='assistant', annotations=[], audio=None, function_call=FunctionCall(arguments='{"query":"SELECT strftime(\'%Y-%m-%d\', FundDatum) AS Tag, COUNT(*) AS AnzahlGefundene FROM Gegenstand GROUP BY Tag ORDER BY AnzahlGefundene DESC LIMIT 1;"}', name='execute_sql'), tool_calls=None)
+===== OpenAI Request =====
+Role: system, Content: You are a SQL assistant for a SQLite database. Continue the conversation.
+Role: user, Content: An welchem Tag wurden die meisten Gegenstände erfasst/gefunden?
+Role: assistant, Content: None
+Role: function, Content: [{"Tag": "2009-02-11", "AnzahlGefundene": 60}]
+Calling OpenAI API...
+===== OpenAI Response =====
+ChatCompletionMessage(content='Am 11. Februar 2009 wurden die meisten Gegenstände erfasst, insgesamt 60 Stück.', refusal=None, role='assistant', annotations=[], audio=None, function_call=None, tool_calls=None)
+===== OpenAI Request =====
+Role: system, Content:
+You are a SQL assistant for a SQLite database with the following schema and foreign keys:
+{
+  "tables": {
+    "Gegenstand": [
+      "gid",
+      "FundbuchNr",
+      "idSubkategorie",
+      "Beschreibung",
+      "Material",
+      "idWaehrung",
+      "Wert",
+      "FundDatum",
+      "idOrt",
+      "idStrasse",
+      "HausNr",
+      "Status"
+    ],
+    "PersonGegenstand": [
+      "pgid",
+      "idGGST",
+      "idPerson",
+      "FinderVerlierer"
+    ],
+    "Person": [
+      "pid",
+      "Vorname",
+      "Name",
+      "idOrt"
+    ],
+    "SubKategorie": [
+      "kid",
+      "Name",
+      "idKategorie"
+    ],
+    "Kategorie": [
+      "kid",
+      "Name"
+    ],
+    "History": [
+      "hid",
+      "idGGST",
+      "idPerson",
+      "Datum",
+      "Beschreibung",
+      "idTyp"
+    ]
+  },
+  "foreign_keys": [
+    {
+      "from": "Gegenstand.idSubkategorie",
+      "to": "SubKategorie.kid"
+    },
+    {
+      "from": "SubKategorie.idKategorie",
+      "to": "Kategorie.kid"
+    },
+    {
+      "from": "PersonGegenstand.idGGST",
+      "to": "Gegenstand.gid"
+    },
+    {
+      "from": "PersonGegenstand.idPerson",
+      "to": "Person.pid"
+    },
+    {
+      "from": "History.idGGST",
+      "to": "Gegenstand.gid"
+    },
+    {
+      "from": "History.idPerson",
+      "to": "Person.pid"
+    }
+  ],
+  "examples": [
+    {
+      "question": "How many items were found at 7pm?",
+      "sql": "SELECT count(*) AS count FROM Gegenstand WHERE strftime('%H', FundDatum) = '19';"
+    },
+    {
+      "question": "In welchem Monat wurden die meisten Gegenst\u00e4nde verloren?",
+      "sql": "SELECT strftime('%Y-%m', g.FundDatum) AS Monat, COUNT(*) AS AnzahlVerloren FROM Gegenstand g JOIN PersonGegenstand pg ON g.gid = pg.idGGST WHERE pg.FinderVerlierer = 0 GROUP BY Monat ORDER BY AnzahlVerloren DESC LIMIT 1;"
+    }
+  ]
+}
+When you need to run a query, call the function execute_sql.
+If you need a diagram, call make_plot.
+Only generate SQL using SELECT statements.
+
+Role: user, Content: An welchem Tag wurden die meisten Gegenstände erfasst/gefunden?
+Role: assistant, Content: None
+Role: function, Content: [{"Tag": "2009-02-11", "AnzahlGefundene": 60}]
+Role: assistant, Content: Am 11. Februar 2009 wurden die meisten Gegenstände erfasst, insgesamt 60 Stück.
+Calling OpenAI API...
+===== OpenAI Response =====
+ChatCompletionMessage(content=None, refusal=None, role='assistant', annotations=[], audio=None, function_call=FunctionCall(arguments='{"query":"SELECT strftime(\'%Y-%m-%d\', FundDatum) AS Tag, COUNT(*) AS AnzahlGefundene FROM Gegenstand GROUP BY Tag ORDER BY AnzahlGefundene DESC LIMIT 1;"}', name='execute_sql'), tool_calls=None)
