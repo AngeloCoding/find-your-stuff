@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Fundsachen Bern</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+
+        #map {
+            height: 400px;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        #map.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 100%;
+            z-index: 1000;
+        }
+
+        #controls {
+            margin-bottom: 1rem;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        #fullscreenBtn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1100;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 3px;
+            user-select: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Fundsachen in Bern</h1>
+
+    <div id="controls">
+        <label for="wertFilter">Wert größer als: </label>
+        <input type="number" id="wertFilter" step="0.01" min="0" placeholder="z.B. 10" />
+        &nbsp;&nbsp;
+
+        <label for="jahrFilter">Jahr: </label>
+        <select id="jahrFilter">
+            <option value="">Alle</option>
+        </select>
+        &nbsp;&nbsp;
+
+        <label for="monatFilter">Monat: </label>
+        <select id="monatFilter">
+            <option value="">Alle</option>
+            <option value="01">Januar</option>
+            <option value="02">Februar</option>
+            <option value="03">März</option>
+            <option value="04">April</option>
+            <option value="05">Mai</option>
+            <option value="06">Juni</option>
+            <option value="07">Juli</option>
+            <option value="08">August</option>
+            <option value="09">September</option>
+            <option value="10">Oktober</option>
+            <option value="11">November</option>
+            <option value="12">Dezember</option>
+        </select>
+        &nbsp;&nbsp;
+
+        <label for="kategorieFilter">Kategorie: </label>
+        <select id="kategorieFilter">
+            <option value="">Alle</option>
+        </select>
+        &nbsp;&nbsp;
+
+        <button id="resetFilter">Filter zurücksetzen</button>
+    </div>
+
+    <div id="map">
+        <button id="fullscreenBtn" title="Karte Vollbild ein/aus">🔍 Vollbild</button>
+    </div>
+
+    <table id="fundsachenTable" class="display" style="width:100%">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Beschreibung</th>
+                <th>Datum</th>
+                <th>Ort</th>
+                <th>Strasse</th>
+                <th>Wert</th>
+                <th>Kategorie</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script>
+        const map = L.map('map').setView([46.94809, 7.44744], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap-Mitwirkende'
+        }).addTo(map);
+
+        const defaultIcon = L.icon({
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            shadowSize: [41, 41]
+        });
+
+        const selectedIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            shadowSize: [41, 41]
+        });
+
+        let markers = [];
+        let markerGroup = L.layerGroup().addTo(map);
+        let selectedMarkerIndex = null;
+        let table;
+
+        // Kategorien Set für Dropdown
+        const kategorienSet = new Set();
+
+        function updateMarkers() {
+            markerGroup.clearLayers();
+            const visibleRows = table.rows({ filter: 'applied' }).indexes().toArray();
+
+            visibleRows.forEach(idx => {
+                const m = markers[idx];
+                if (!m) return;
+                if (idx === selectedMarkerIndex) {
+                    m.marker.setIcon(selectedIcon);
+                    m.marker.openPopup();
+                } else {
+                    m.marker.setIcon(defaultIcon);
+                    m.marker.closePopup();
+                }
+                markerGroup.addLayer(m.marker);
+            });
+        }
+
+        function resetSelection() {
+            selectedMarkerIndex = null;
+            updateMarkers();
+        }
+
+        function populateKategorieDropdown() {
+            const select = document.getElementById('kategorieFilter');
+            kategorienSet.forEach(kat => {
+                const option = document.createElement('option');
+                option.value = kat;
+                option.textContent = kat;
+                select.appendChild(option);
+            });
+        }
+
+        function populateJahrDropdown(data) {
+            const jahrSelect = document.getElementById('jahrFilter');
+            const jahreSet = new Set();
+            data.forEach(item => {
+                if (item.funddatum) {
+                    const jahr = item.funddatum.substring(0, 4);
+                    jahreSet.add(jahr);
+                }
+            });
+            // Sortiere Jahre absteigend
+            Array.from(jahreSet).sort((a, b) => b - a).forEach(jahr => {
+                const option = document.createElement('option');
+                option.value = jahr;
+                option.textContent = jahr;
+                jahrSelect.appendChild(option);
+            });
+        }
+
+        fetch('fundsachen_export1.json')
+            .then(res => res.json())
+            .then(data => {
+                const tableBody = document.querySelector('#fundsachenTable tbody');
+
+                data.forEach((item, idx) => {
+                    const beschreibung = item.beschreibung ?? item.subkategorie ?? "";
+                    const kat = item.kategorie ?? "";
+
+                    if (kat) kategorienSet.add(kat);
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td>${beschreibung}</td>
+                        <td>${item.funddatum ? item.funddatum.substring(0, 10) : ''}</td>
+                        <td>${item.fundort || ''}</td>
+                        <td>${item.fundstrasse || ''}</td>
+                        <td>${item.wert != null ? item.wert.toFixed(2) : ''}</td>
+                        <td>${kat}</td>
+                    `;
+                    tableBody.appendChild(row);
+
+                    if (item.lat && item.lon) {
+                        const marker = L.marker([item.lat, item.lon], { icon: defaultIcon })
+                            .bindPopup(`<strong>${beschreibung}</strong><br>${item.fundstrasse || ''}, ${item.fundplz || ''} ${item.fundort || ''}`);
+                        markers.push({ marker, rowIndex: idx });
+                    } else {
+                        markers.push(null);
+                    }
+                });
+
+                populateKategorieDropdown();
+                populateJahrDropdown(data);
+
+                table = $('#fundsachenTable').DataTable({
+                    order: [[2, 'desc']],
+                    lengthMenu: [10, 25, 50, 100],
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json'
+                    }
+                });
+
+                updateMarkers();
+
+                $('#fundsachenTable tbody').on('click', 'tr', function () {
+                    const rowIdx = table.row(this).index();
+                    if (selectedMarkerIndex === rowIdx) {
+                        selectedMarkerIndex = null;
+                    } else {
+                        selectedMarkerIndex = rowIdx;
+                        const marker = markers[rowIdx]?.marker;
+                        if (marker) {
+                            map.setView(marker.getLatLng(), 16);
+                        }
+                    }
+                    updateMarkers();
+                });
+
+                $('#wertFilter, #jahrFilter, #monatFilter, #kategorieFilter').on('input change', function () {
+                    const wertLimit = parseFloat($('#wertFilter').val());
+                    const jahrLimit = $('#jahrFilter').val();
+                    const monatLimit = $('#monatFilter').val();
+                    const kategorieLimit = $('#kategorieFilter').val();
+
+                    $.fn.dataTable.ext.search = [];
+
+                    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                        const wert = parseFloat(data[5]) || 0;
+                        const datum = data[2]; // yyyy-mm-dd
+                        const kat = data[6];
+
+                        if (!isNaN(wertLimit) && wert <= wertLimit) {
+                            return false;
+                        }
+
+                        if (jahrLimit) {
+                            const jahr = datum.substring(0, 4);
+                            if (jahr !== jahrLimit) return false;
+                        }
+
+                        if (monatLimit) {
+                            const monat = datum.substring(5, 7);
+                            if (monat !== monatLimit) return false;
+                        }
+
+                        if (kategorieLimit && kategorieLimit !== "" && kat !== kategorieLimit) {
+                            return false;
+                        }
+
+                        return true;
+                    });
+
+                    table.draw();
+                    resetSelection();
+                });
+
+                $('#resetFilter').on('click', function () {
+                    $('#wertFilter').val('');
+                    $('#jahrFilter').val('');
+                    $('#monatFilter').val('');
+                    $('#kategorieFilter').val('');
+                    $.fn.dataTable.ext.search = [];
+                    table.draw();
+                    resetSelection();
+                });
+            });
+
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const mapDiv = document.getElementById('map');
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (!mapDiv.classList.contains('fullscreen')) {
+                mapDiv.classList.add('fullscreen');
+                fullscreenBtn.textContent = '❌ Vollbild beenden';
+            } else {
+                mapDiv.classList.remove('fullscreen');
+                fullscreenBtn.textContent = '🔍 Vollbild';
+            }
+            map.invalidateSize();
+        });
+    </script>
+</body>
+
+</html>
