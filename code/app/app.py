@@ -10,7 +10,6 @@ if 'messages' not in st.session_state:
         {"role": "system", "content": SYSTEM_PROMPT}
     ]
 
-
 def handle_query(user_question: str):
     # 1) Append user question
     st.session_state.messages.append({"role": "user", "content": user_question})
@@ -19,21 +18,21 @@ def handle_query(user_question: str):
     resp = ask_openai(st.session_state.messages)
     msg = resp.choices[0].message  # ChatCompletionMessage object
 
-    # 3) Check if OpenAI asked for a function call
+    # 3) If OpenAI asked for a function call
     if msg.function_call is not None:
         func_name = msg.function_call.name
         func_args = json.loads(msg.function_call.arguments)
 
-        # 4a) Execute the function locally
+        # 4) Execute the function, but don’t display its raw JSON
         try:
             if func_name == "execute_sql":
                 rows = execute_sql(func_args["query"])
-                st.write(rows)
                 func_response = json.dumps(rows)
 
             elif func_name == "make_plot":
                 rows = execute_sql(func_args["query"])
                 img_path = make_plot(rows, func_args["config"])
+                # Show only the image, not the JSON
                 st.image(img_path, use_column_width=True)
                 func_response = json.dumps({"plot_path": img_path})
 
@@ -45,7 +44,7 @@ def handle_query(user_question: str):
             st.error(f"Error during `{func_name}`: {e}")
             return
 
-        # 4b) Feed the function result back to OpenAI
+        # 5) Feed the function result back to the LLM
         st.session_state.messages.append({
             "role": "assistant",
             "content": None,
@@ -60,20 +59,19 @@ def handle_query(user_question: str):
             "content": func_response
         })
 
-        # 5) Finalize with one more LLM call
+        # 6) Finalize with one more LLM call and display only its text
         final = ask_openai(st.session_state.messages)
         final_msg = final.choices[0].message
         st.write(final_msg.content)
         st.session_state.messages.append({"role": final_msg.role, "content": final_msg.content})
 
     else:
-        # no function call → just show the content
+        # No function call → display the direct assistant reply
         st.write(msg.content)
         st.session_state.messages.append({"role": msg.role, "content": msg.content})
 
 
-# --- in your Streamlit main code ---
-
+# In your main Streamlit code:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
