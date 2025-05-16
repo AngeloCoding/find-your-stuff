@@ -1,0 +1,17 @@
+﻿htid;Beschreibung;Dot
+1;Texteintrag;NULL
+2;2. Citierung Verlierer;CitierungV2.dot
+3;1. Citierung Finder;CitierungF1.dot
+4;2. Citierung Finder;CitierungF2.dot
+5;Finderlohnkarte;Finderlohnkarte.rpt
+9;Fundkarte (Finder);Fundkarte.rpt
+10;Abholeinladung Fundgegenstand;EinladungFund.dot
+12;Kurzbrief Mobile-Anbieter;Fax.dot
+14;Quittung;Quittung.dot
+6;Fundkarte (Verlierer);Fundkarte.rpt
+7;1. Citierung Verlierer;CitierungV1.dot
+8;Abholeinladung Finderlohn - Don't touch this!;EinladungFinderlohn.dot
+11;Kurzbrief Bank / Post;KurzbriefBank.dot
+13;Merkblatt;Merkblatt.dot
+15;Kurzbrief an Botschaft;KurzbriefBotschaft.dot
+16;Fundmeldung;Fundmeldung.dot
