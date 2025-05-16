@@ -3,24 +3,38 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import uuid
+from typing import List, Dict, Any
 
-def execute_sql(query: str, db_path: str = "primaerdaten.db") -> list:
+def execute_sql(query: str, db_path: str = "primaerdaten.db") -> List[Dict[str, Any]]:
     """
     Execute a read-only SQL SELECT query against the SQLite DB and return rows as list of dicts.
+    Allows one optional trailing semicolon but rejects multi-statement queries or forbidden keywords.
     """
-    # Basic sanitization: only allow SELECT statements
-    q = query.strip().lower()
-    if not q.startswith('select'):
+    # 1) Normalize whitespace & strip trailing semicolon
+    raw = query.strip()
+    if raw.endswith(';'):
+        raw = raw[:-1].strip()
+
+    # 2) Must start with SELECT
+    low = raw.lower()
+    if not low.startswith('select'):
         raise ValueError('Only SELECT queries are allowed.')
-    if 'pragma' in q or 'attach' in q or 'drop' in q or 'alter' in q:
-        raise ValueError('Unsafe SQL detected.')
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute(query)
-    rows = [dict(r) for r in cur.fetchall()]
-    conn.close()
-    return rows
+
+    # 3) Reject any semicolons (now guaranteed no trailing one) or dangerous keywords
+    if ';' in raw:
+        raise ValueError('Multiple statements detected.')
+    for forbidden in ('pragma ', 'attach ', 'drop ', 'alter ', 'insert ', 'update ', 'delete '):
+        if forbidden in low:
+            raise ValueError(f'Unsafe SQL detected: contains "{forbidden.strip()}"')
+
+    # 4) Run query safely
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.execute(raw)
+        rows = cur.fetchall()
+
+    # 5) Convert to list of dicts
+    return [dict(r) for r in rows]
 
 
 def make_plot(data: list, config: dict) -> str:

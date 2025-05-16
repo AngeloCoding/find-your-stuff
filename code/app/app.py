@@ -10,66 +10,73 @@ if 'messages' not in st.session_state:
         {"role": "system", "content": SYSTEM_PROMPT}
     ]
 
-user_question = st.text_input('Ask a question about the database:')
-if st.button('Submit') and user_question:
-    st.session_state.messages.append({"role": "user", "content": user_question})
-    # Call and log the OpenAI assistant response
-    response = ask_openai(st.session_state.messages)
-    msg = response.choices[0].message
 
-    # Handle function calls
-    if hasattr(msg, 'function_call') and msg.function_call:
-        fn_name = msg.function_call.name
-        args = json.loads(msg.function_call.arguments)
-        if fn_name == 'execute_sql':
-            try:
-                rows = execute_sql(args['query'])
-                st.write('Query results:', rows)
-                # Append the function call and its result to context properly
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": None,
-                    "function_call": {
-                        "name": fn_name,
-                        "arguments": msg.function_call.arguments
-                    }
-                })
-                st.session_state.messages.append({
-                    "role": "function",
-                    "name": "execute_sql",
-                    "content": json.dumps(rows)
-                })
-            except Exception as e:
-                st.error(f"SQL Error: {e}")
-        elif fn_name == 'make_plot':
-            try:
-                path = make_plot(args['data'], args['config'])
-                st.image(path)
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": None,
-                    "function_call": {
-                        "name": fn_name,
-                        "arguments": msg.function_call.arguments
-                    }
-                })
-                st.session_state.messages.append({
-                    "role": "function",
-                    "name": "make_plot",
-                    "content": path
-                })
-            except Exception as e:
-                st.error(f"Plot Error: {e}")
-        # After handling, get a final answer without resending full schema
-        # Use a minimal system prompt for follow-up to avoid re-sending large schema
-        minimal_system = {"role": "system", "content": "You are a SQL assistant for a SQLite database. Continue the conversation."}
-        # Exclude original system prompt when making the follow-up
-        followup_messages = [minimal_system] + [m for m in st.session_state.messages if m.get('role') != 'system']
-        followup = ask_openai(followup_messages)
-        final = followup.choices[0].message
-        st.write(final.content)
-        st.session_state.messages.append({"role": "assistant", "content": final.content})
-        followup = ask_openai(st.session_state.messages)
-        final = followup.choices[0].message
-        st.write(final.content)
-        st.session_state.messages.append({"role":"assistant","content":final.content})
+def handle_query(user_question: str):
+    # 1) Append user question
+    st.session_state.messages.append({"role": "user", "content": user_question})
+
+    # 2) First OpenAI call
+    resp = ask_openai(st.session_state.messages)
+    msg = resp.choices[0].message  # ChatCompletionMessage object
+
+    # 3) Check if OpenAI asked for a function call
+    if msg.function_call is not None:
+        func_name = msg.function_call.name
+        func_args = json.loads(msg.function_call.arguments)
+
+        # 4a) Execute the function locally
+        try:
+            if func_name == "execute_sql":
+                rows = execute_sql(func_args["query"])
+                st.write(rows)
+                func_response = json.dumps(rows)
+
+            elif func_name == "make_plot":
+                rows = execute_sql(func_args["query"])
+                img_path = make_plot(rows, func_args["config"])
+                st.image(img_path, use_column_width=True)
+                func_response = json.dumps({"plot_path": img_path})
+
+            else:
+                st.error(f"Unknown function `{func_name}` requested.")
+                return
+
+        except Exception as e:
+            st.error(f"Error during `{func_name}`: {e}")
+            return
+
+        # 4b) Feed the function result back to OpenAI
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": None,
+            "function_call": {
+                "name": func_name,
+                "arguments": msg.function_call.arguments
+            }
+        })
+        st.session_state.messages.append({
+            "role": "function",
+            "name": func_name,
+            "content": func_response
+        })
+
+        # 5) Finalize with one more LLM call
+        final = ask_openai(st.session_state.messages)
+        final_msg = final.choices[0].message
+        st.write(final_msg.content)
+        st.session_state.messages.append({"role": final_msg.role, "content": final_msg.content})
+
+    else:
+        # no function call → just show the content
+        st.write(msg.content)
+        st.session_state.messages.append({"role": msg.role, "content": msg.content})
+
+
+# --- in your Streamlit main code ---
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+user_q = st.text_input("Ask a question about the database:")
+if st.button("Submit") and user_q:
+    handle_query(user_q)

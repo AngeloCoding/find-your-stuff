@@ -1,6 +1,17 @@
 import os
 import json
 import openai
+import logging
+
+# configure logger
+# logging.basicConfig(
+#     filename='app.log',
+#     filemode='a',
+#     format='%(asctime)s %(levelname)s:%(message)s',
+#     datefmt='%Y-%m-%d %H:%M:%S',
+#     level=logging.DEBUG
+# )
+logger = logging.getLogger(__name__)
 
 # Load your OpenAI API key from environment variable
 openai.api_key = os.getenv('OPENAI_API_KEY')
@@ -43,22 +54,13 @@ Only generate SQL using SELECT statements.
 
 
 def ask_openai(messages):
-    # Logging: print the outgoing request messages TODO del
-    print("===== OpenAI Request =====")
-    for msg in messages:
-        role = msg.get('role')
-        content = msg.get('content') if 'content' in msg else ''
-        print(f"Role: {role}, Content: {content}")
     # Call the API
-    print("Calling OpenAI API...")
+    logger.debug("Sending to OpenAI: %s", messages)
     response = openai.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
         functions=FUNCTIONS,
         function_call="auto"
     )
-    # Logging: print the raw API response TODO del
-    print("===== OpenAI Response =====")
-    print(response.choices[0].message)
-
+    logger.debug("Response from OpenAI: %s", response)
     return response
