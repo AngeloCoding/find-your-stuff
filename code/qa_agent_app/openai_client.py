@@ -3,17 +3,10 @@ import json
 import openai
 import logging
 
-# configure logger
-# logging.basicConfig(
-#     filename='app.log',
-#     filemode='a',
-#     format='%(asctime)s %(levelname)s:%(message)s',
-#     datefmt='%Y-%m-%d %H:%M:%S',
-#     level=logging.DEBUG
-# )
+# Configure logger settings
 logger = logging.getLogger(__name__)
 
-# Load your OpenAI API key from environment variable
+# Load OpenAI API key from environment
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
 # Load schema and examples

@@ -10,24 +10,24 @@ def execute_sql(query: str, db_path: str = "primaerdaten.db") -> List[Dict[str, 
     Execute a read-only SQL SELECT query against the SQLite DB and return rows as list of dicts.
     Allows one optional trailing semicolon but rejects multi-statement queries or forbidden keywords.
     """
-    # 1) Normalize whitespace & strip trailing semicolon
+    # Normalize whitespace and remove trailing semicolons
     raw = query.strip()
     if raw.endswith(';'):
         raw = raw[:-1].strip()
 
-    # 2) Must start with SELECT
+    # Ensure query starts with SELECT
     low = raw.lower()
     if not low.startswith('select'):
         raise ValueError('Only SELECT queries are allowed.')
 
-    # 3) Reject any semicolons (now guaranteed no trailing one) or dangerous keywords
+    # Block semicolons and unsafe keywords
     if ';' in raw:
         raise ValueError('Multiple statements detected.')
     for forbidden in ('pragma ', 'attach ', 'drop ', 'alter ', 'insert ', 'update ', 'delete '):
         if forbidden in low:
             raise ValueError(f'Unsafe SQL detected: contains "{forbidden.strip()}"')
 
-    # 4) Run query safely
+    # Execute query safely
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         cur = conn.execute(raw)
@@ -35,7 +35,7 @@ def execute_sql(query: str, db_path: str = "primaerdaten.db") -> List[Dict[str, 
 
     rows = rows[:20]  # Limit to 20 rows for performance
 
-    # 5) Convert to list of dicts
+    # Convert results to list of dicts
     return [dict(r) for r in rows]
 
 
