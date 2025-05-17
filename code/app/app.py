@@ -55,7 +55,7 @@ if 'messages' not in st.session_state:
     st.session_state.messages = [
         {"role": "system", "content": SYSTEM_PROMPT}
     ]
-    
+
     # Add few-shot examples as conversation turns
     for example in few_shot_examples:
         # User provides the example answer
@@ -124,10 +124,17 @@ def handle_query(user_question: str):
         st.session_state.messages.append({"role": msg.role, "content": msg.content})
 
 
+def on_submit():
+    if st.session_state.user_q:
+        handle_query(st.session_state.user_q)
+
+
 # In your main Streamlit code:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-user_q = st.text_input("Ask a question about the database:")
-if st.button("Submit") and user_q:
+with st.form(key="query_form"):
+    user_q = st.text_input("Ask a question about the database:", key="user_q")
+    submitted = st.form_submit_button("Submit")
+if submitted and user_q:
     handle_query(user_q)
