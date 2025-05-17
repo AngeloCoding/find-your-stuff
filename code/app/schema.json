@@ -1,0 +1,18 @@
+{
+  "tables": {
+    "Gegenstand": ["gid","FundbuchNr","idSubkategorie","Beschreibung","Material","idWaehrung","Wert","FundDatum","idOrt","idStrasse","HausNr","Status"],
+    "PersonGegenstand": ["pgid","idGGST","idPerson","FinderVerlierer"],
+    "Person": ["pid","Vorname","Name","idOrt"],
+    "SubKategorie": ["kid","Name","idKategorie"],
+    "Kategorie": ["kid","Name"],
+    "History": ["hid","idGGST","idPerson","Datum","Beschreibung","idTyp"]
+  },
+  "foreign_keys": [
+    {"from":"Gegenstand.idSubkategorie","to":"SubKategorie.kid"},
+    {"from":"SubKategorie.idKategorie","to":"Kategorie.kid"},
+    {"from":"PersonGegenstand.idGGST","to":"Gegenstand.gid"},
+    {"from":"PersonGegenstand.idPerson","to":"Person.pid"},
+    {"from":"History.idGGST","to":"Gegenstand.gid"},
+    {"from":"History.idPerson","to":"Person.pid"}
+  ]
+}
