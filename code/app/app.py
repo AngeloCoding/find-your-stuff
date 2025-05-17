@@ -3,12 +3,65 @@ import json
 from openai_client import ask_openai, SYSTEM_PROMPT
 from utils import execute_sql, make_plot
 
+
+few_shot_examples = [
+    {
+        "question": "Wie viele Gegenstände wurden um 7 Uhr gefunden?",
+        "answer": "SELECT count(*) AS count FROM Gegenstand WHERE strftime('%H', FundDatum) = '19';",
+    },
+    {
+        "question": "In welchem Monat wurden die meisten Gegenstände verloren?",
+        "answer": "SELECT strftime('%Y-%m', g.FundDatum) AS Monat, COUNT(*) AS AnzahlVerloren FROM Gegenstand g JOIN PersonGegenstand pg ON g.gid = pg.idGGST WHERE pg.FinderVerlierer = 0 GROUP BY Monat ORDER BY AnzahlVerloren DESC LIMIT 1;",
+    },
+    {
+        "question": "Wie viele Gegenstände wurden im Jahr 2020 gefunden?",
+        "answer": "SELECT COUNT(*) AS AnzahlGefunden FROM Gegenstand WHERE strftime('%Y', FundDatum) = '2020';",
+    },
+    {
+        "question": "Welche Subkategorie hat die meisten Funde?",
+        "answer": "SELECT sk.Beschreibung AS Subkategorie, COUNT(*) AS Anzahl FROM Gegenstand g JOIN SubKategorie sk ON g.idSubkategorie = sk.skid GROUP BY sk.Beschreibung ORDER BY Anzahl DESC LIMIT 1;",
+    },
+    {
+        "question": "Wie viele Smartphones wurden gefunden, die von Swisscom sind?",
+        "answer": "SELECT COUNT(*) AS AnzahlSmartphones FROM Gegenstand WHERE Natel = 1 AND NatelProvider = 'Swisscom';",
+    },
+    {
+        "question": "Wie viele Velos wurden gefunden?",
+        "answer": "SELECT COUNT(*) AS AnzahlVelos FROM Gegenstand g JOIN SubKategorie sk ON g.idSubkategorie = sk.skid WHERE LOWER(sk.Beschreibung) LIKE '%velo%' OR LOWER(g.Beschreibung) LIKE '%velo%';"
+    },
+    {
+        "question": "Was sind die Top 10 am häufigsten gefundenen Gegenständ",
+        "answer": """
+            SELECT 
+                SK.Beschreibung AS Subkategorie,
+                COUNT(*) AS Anzahl
+            FROM 
+                Gegenstand G
+            JOIN 
+                SubKategorie SK ON G.idSubkategorie = SK.skid
+            GROUP BY 
+                SK.Beschreibung
+            ORDER BY 
+                COUNT(*) DESC
+            LIMIT 10;
+        """,
+    }
+]
+
+
 st.title('SQLite QA Agent')
 
 if 'messages' not in st.session_state:
     st.session_state.messages = [
         {"role": "system", "content": SYSTEM_PROMPT}
     ]
+    
+    # Add few-shot examples as conversation turns
+    for example in few_shot_examples:
+        # User provides the example answer
+        st.session_state.messages.append({"role": "user", "content": f"{example['question']}"})
+        # Assistant provides the corresponding expert rating
+        st.session_state.messages.append({"role": "assistant", "content": f"{example['answer']}"})
 
 def handle_query(user_question: str):
     # 1) Append user question

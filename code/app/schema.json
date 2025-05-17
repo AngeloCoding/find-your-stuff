@@ -14,15 +14,5 @@
     {"from":"PersonGegenstand.idPerson","to":"Person.pid"},
     {"from":"History.idGGST","to":"Gegenstand.gid"},
     {"from":"History.idPerson","to":"Person.pid"}
-  ],
-  "examples": [
-    {
-      "question": "How many items were found at 7pm?",
-      "sql": "SELECT count(*) AS count FROM Gegenstand WHERE strftime('%H', FundDatum) = '19';"
-    },
-    {
-      "question": "In welchem Monat wurden die meisten Gegenstände verloren?",
-      "sql": "SELECT strftime('%Y-%m', g.FundDatum) AS Monat, COUNT(*) AS AnzahlVerloren FROM Gegenstand g JOIN PersonGegenstand pg ON g.gid = pg.idGGST WHERE pg.FinderVerlierer = 0 GROUP BY Monat ORDER BY AnzahlVerloren DESC LIMIT 1;"
-    }
   ]
 }
